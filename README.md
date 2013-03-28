@@ -22,11 +22,11 @@ Basic usage
 ===========
 
 Requiring peanutbutter returns a function that when called returns a pb 
-middleware, this function can be passed config options:
+object, this function can be passed config options:
 
-timeout : minutes that a session should be kept alive with no interaction.
-authenticate : a function which returns a blessed avatar.
-
+ * timeout : minutes that a session should be kept alive with no interaction.
+ * authenticate : a function which returns a blessed avatar.
+ 
 You can also assign these values directly if you wish.
 
 ```javascript
@@ -37,13 +37,14 @@ var pb = require("peanutbutter")({ timeout : 120 });
 pb.authenticate = function(authData, callback) {
     queryYourBackendForUser(function(err, user) {
         if(err) return callback(err, null); 
-        var avatar = pb.avatar({userId : user._id}); 
+        var avatar = pb.avatar(user._id); 
         avatar.bless({forum : forumUserAPI, user: userSettingsAPI});
         return callback(null, avatar);
     } 
 };
 
-app.use(connect.bodyParser()).use(pb).listen(8000);
+
+app.use(connect.bodyParser()).use(pb.middleware).listen(8000);
 ```
 
 Define capabilities
@@ -71,3 +72,47 @@ var forumUserAPI = {
 note: If you wanted to access database connections and other services, you might
 create your capabilities and configure pb inside a closure with access to those
 things. 
+
+
+API
+===
+
+## pb object: returned from require("peanutbutter")() factory.
+
+### pb.middleware
+
+A connect middleware that serves the API.
+
+### pb.timeout
+
+An integer, time in minutes to remove the avatar if no activity.
+
+### pb.authenticate
+
+A function which takes some authData and a callback(err, avatar). This function
+should authenticate the user using the authData provided by the client, and
+return an avatar object created using pb.avatar.
+
+### pb.avatar(id, { /* extra avatar attributes */ });
+
+pb.avatar creates a new avatar object, takes a unique id and optional 
+key/values to keep with the avatar. It is important to note that anything on
+the avatar will be kept in memory until the avatar expires.
+
+
+## avatar object: returned from pb.avatar(id) factory.
+
+### avatar.bless({ foo : fooAPI, ... });
+
+Bless grants the client for this avatar access to a set of capabilities 
+
+### avatar.revoke(["foo"]); 
+
+Revoke removes access to one or more sets of capabilities.
+
+### avatar.expire(); 
+
+Remove the avatar, user will need to re-authenticate.
+
+
+
